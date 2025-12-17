@@ -1,0 +1,14 @@
+# OpenLedger Common Configuration
+crypto:
+  service:
+    url: ${CRYPTO_SERVICE_URL:http://localhost:8080}
+
+fabric:
+  default:
+    channel: mychannel
+
+# Logging configuration
+logging:
+  level:
+    com.openledger: DEBUG
+    org.hyperledger.fabric: INFO

@@ -1,0 +1,33 @@
+# Test Configuration for OpenLedger API
+spring:
+  application:
+    name: openledger-api-test
+
+crypto:
+  service:
+    url: http://localhost:8081
+
+institutions:
+  bk:
+    org: TestBankMSP
+    user: testuser
+    peer: test-peer
+    peer:
+      endpoint: grpc://localhost:7051
+    channel: test-channel
+    chaincode: test-chaincode
+    api:
+      url: http://localhost:8082
+      key: test-api-key
+
+sync:
+  bk:
+    transactions:
+      interval: 60000 # 1 minute for tests
+    balances:
+      interval: 60000 # 1 minute for tests
+
+logging:
+  level:
+    com.openledger: DEBUG
+    org.hyperledger.fabric: INFO
