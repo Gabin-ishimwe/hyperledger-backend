@@ -2,9 +2,8 @@ package com.openledger.api.institutions.bk;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.openledger.common.fabric.registry.GatewayRegistry;
-import org.hyperledger.fabric.gateway.Contract;
-import org.hyperledger.fabric.gateway.Network;
+import com.openledger.common.fabric.gateway.FabricGatewayService;
+import org.hyperledger.fabric.client.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,7 +24,7 @@ public class BankService {
     private static final Logger logger = LoggerFactory.getLogger(BankService.class);
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    private final GatewayRegistry gatewayRegistry;
+    private final FabricGatewayService fabricGatewayService;
     private final ObjectMapper objectMapper;
 
     @Value("${institutions.bk.org:BankOfKigaliMSP}")
@@ -34,11 +33,8 @@ public class BankService {
     @Value("${institutions.bk.user:admin}")
     private String bkUserId;
 
-    @Value("${institutions.bk.peer:peer0.bk.openledger.com}")
+    @Value("${institutions.bk.peer:peer0}")
     private String bkPeerId;
-
-    @Value("${institutions.bk.peer.endpoint:grpcs://peer0.bk.openledger.com:7051}")
-    private String bkPeerEndpoint;
 
     @Value("${institutions.bk.channel:openledger-channel}")
     private String bkChannel;
@@ -46,8 +42,8 @@ public class BankService {
     @Value("${institutions.bk.chaincode:openledger}")
     private String bkChaincode;
 
-    public BankService(GatewayRegistry gatewayRegistry) {
-        this.gatewayRegistry = gatewayRegistry;
+    public BankService(FabricGatewayService fabricGatewayService) {
+        this.fabricGatewayService = fabricGatewayService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -237,9 +233,8 @@ public class BankService {
     /**
      * Get the Fabric contract for Bank of Kigali operations.
      */
-    private Contract getContract() throws Exception {
-        Network network = gatewayRegistry.getNetwork(bkOrgId, bkUserId, bkPeerId, bkPeerEndpoint, bkChannel);
-        return network.getContract(bkChaincode);
+    private Contract getContract() {
+        return fabricGatewayService.getContract(bkOrgId, bkUserId, bkPeerId, bkChannel, bkChaincode);
     }
 
     /**

@@ -1,4 +1,7 @@
-# OpenLedger Common Configuration
+# Test Configuration for FabricGatewayService Integration Tests
+#
+# Override these values via environment variables or update directly for your test environment
+
 crypto:
   service:
     url: ${CRYPTO_SERVICE_URL:http://localhost:8080}
@@ -7,12 +10,10 @@ fabric:
   default:
     channel: ${FABRIC_CHANNEL:mychannel}
   gateway:
-    # Default timeout settings (in seconds)
     evaluate-timeout: 5
     endorse-timeout: 15
     submit-timeout: 5
     commit-timeout: 60
-  # Organization-specific peer endpoints
   organizations:
     Org1MSP:
       peer-endpoint: ${ORG1_PEER_ENDPOINT:localhost:7051}
@@ -23,13 +24,9 @@ fabric:
     BankOfKigaliMSP:
       peer-endpoint: ${BOK_PEER_ENDPOINT:localhost:8051}
       peer-name: ${BOK_PEER_NAME:peer0.bankofkigali.openledger.com}
-    MTNMSP:
-      peer-endpoint: ${MTN_PEER_ENDPOINT:localhost:10051}
-      peer-name: ${MTN_PEER_NAME:peer0.mtn.openledger.com}
 
-# Logging configuration
 logging:
   level:
     com.openledger: DEBUG
-    org.hyperledger.fabric: INFO
-    io.grpc: WARN
+    org.hyperledger.fabric: DEBUG
+    io.grpc: INFO

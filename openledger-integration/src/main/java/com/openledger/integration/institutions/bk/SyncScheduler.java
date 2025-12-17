@@ -1,8 +1,7 @@
 package com.openledger.integration.institutions.bk;
 
-import com.openledger.common.fabric.registry.GatewayRegistry;
-import org.hyperledger.fabric.gateway.Contract;
-import org.hyperledger.fabric.gateway.Network;
+import com.openledger.common.fabric.gateway.FabricGatewayService;
+import org.hyperledger.fabric.client.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +23,7 @@ public class SyncScheduler {
 
     private final BankConnector bankConnector;
     private final BankMapper bankMapper;
-    private final GatewayRegistry gatewayRegistry;
+    private final FabricGatewayService fabricGatewayService;
 
     @Value("${institutions.bk.org:BankOfKigaliMSP}")
     private String bkOrgId;
@@ -32,11 +31,8 @@ public class SyncScheduler {
     @Value("${institutions.bk.user:admin}")
     private String bkUserId;
 
-    @Value("${institutions.bk.peer:peer0.bk.openledger.com}")
+    @Value("${institutions.bk.peer:peer0}")
     private String bkPeerId;
-
-    @Value("${institutions.bk.peer.endpoint:grpcs://peer0.bk.openledger.com:7051}")
-    private String bkPeerEndpoint;
 
     @Value("${institutions.bk.channel:openledger-channel}")
     private String bkChannel;
@@ -44,12 +40,12 @@ public class SyncScheduler {
     @Value("${institutions.bk.chaincode:openledger}")
     private String bkChaincode;
 
-    public SyncScheduler(BankConnector bankConnector, 
+    public SyncScheduler(BankConnector bankConnector,
                         BankMapper bankMapper,
-                        GatewayRegistry gatewayRegistry) {
+                        FabricGatewayService fabricGatewayService) {
         this.bankConnector = bankConnector;
         this.bankMapper = bankMapper;
-        this.gatewayRegistry = gatewayRegistry;
+        this.fabricGatewayService = fabricGatewayService;
     }
 
     /**
@@ -130,8 +126,7 @@ public class SyncScheduler {
      */
     private void writeToLedger(String dataType, String data) {
         try {
-            Network network = gatewayRegistry.getNetwork(bkOrgId, bkUserId, bkPeerId, bkPeerEndpoint, bkChannel);
-            Contract contract = network.getContract(bkChaincode);
+            Contract contract = fabricGatewayService.getContract(bkOrgId, bkUserId, bkPeerId, bkChannel, bkChaincode);
 
             // Submit transaction to ledger
             byte[] result = contract.submitTransaction(
@@ -162,10 +157,7 @@ public class SyncScheduler {
             logger.info("Bank API connection: {}", bankConnected ? "OK" : "FAILED");
 
             // Test ledger connectivity
-            Network network = gatewayRegistry.getNetwork(bkOrgId, bkUserId, bkPeerId, bkPeerEndpoint, bkChannel);
-            Contract contract = network.getContract(bkChaincode);
-            byte[] result = contract.evaluateTransaction("ping");
-            boolean ledgerConnected = result != null;
+            boolean ledgerConnected = fabricGatewayService.isHealthy(bkOrgId, bkUserId, bkPeerId);
             logger.info("Ledger connection: {}", ledgerConnected ? "OK" : "FAILED");
 
             return bankConnected && ledgerConnected;
