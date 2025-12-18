@@ -111,16 +111,40 @@ public class FabricGatewayService implements DisposableBean {
             throw new IllegalArgumentException("No configuration found for organization: " + orgMspId);
         }
 
-        // Fetch crypto materials from external service
-        CryptoMaterials cryptoMaterials = cryptoClient.fetchCrypto(orgMspId, userId, peerId);
-        logger.debug("Fetched crypto materials for {}/{}/{}", orgMspId, userId, peerId);
+        // Validate required configuration
+        if (orgConfig.getOrgName() == null || orgConfig.getOrgName().isBlank()) {
+            throw new IllegalArgumentException("orgName not configured for organization: " + orgMspId);
+        }
+
+        // Use peerName from config if peerId is not specified, otherwise use peerId
+        String effectivePeerName = (peerId != null && !peerId.isBlank()) ? peerId : orgConfig.getPeerName();
+        if (effectivePeerName == null || effectivePeerName.isBlank()) {
+            effectivePeerName = "peer0"; // default
+        }
+
+        // Fetch crypto materials from external service using correct API parameters:
+        // /api/crypto/gateway/:orgName/:userName/:peerName
+        CryptoMaterials cryptoMaterials = cryptoClient.fetchCrypto(
+                orgConfig.getOrgName(),  // e.g., "org1.example.com"
+                userId,                   // e.g., "User1"
+                effectivePeerName         // e.g., "peer0"
+        );
+        logger.debug("Fetched crypto materials for org: {}, user: {}, peer: {}",
+                orgConfig.getOrgName(), userId, effectivePeerName);
 
         // Convert to Fabric objects using the helper
         Identity identity = identityHelper.createIdentity(cryptoMaterials.certificate(), cryptoMaterials.mspId());
         Signer signer = identityHelper.createSigner(cryptoMaterials.privateKey());
 
-        // Create or reuse gRPC channel
-        ManagedChannel channel = getOrCreateChannel(orgMspId, orgConfig, cryptoMaterials.tlsCaCert());
+        // Use peer endpoint from crypto response, fallback to config
+        String peerEndpoint = cryptoMaterials.peerEndpoint();
+        if (peerEndpoint == null || peerEndpoint.isBlank()) {
+            peerEndpoint = orgConfig.getPeerEndpoint();
+            logger.warn("No peerEndpoint in crypto response, using config: {}", peerEndpoint);
+        }
+
+        // Create or reuse gRPC channel using endpoint from crypto materials
+        ManagedChannel channel = getOrCreateChannel(orgMspId, peerEndpoint, cryptoMaterials);
 
         // Create Gateway with proper timeouts following reference pattern
         Gateway gateway = Gateway.newInstance()
@@ -139,42 +163,70 @@ public class FabricGatewayService implements DisposableBean {
                         properties.getGateway().getCommitTimeout(), TimeUnit.SECONDS))
                 .connect();
 
-        logger.info("Successfully created Gateway for {}/{}/{}", orgMspId, userId, peerId);
+        logger.info("Successfully created Gateway for {}/{}/{}", orgMspId, userId, effectivePeerName);
         return gateway;
     }
 
     /**
      * Get or create a gRPC channel for the organization.
+     *
+     * @param orgMspId Organization MSP ID for caching
+     * @param peerEndpoint Peer endpoint from crypto materials or config (e.g., "peer0.org1.example.com:7051")
+     * @param cryptoMaterials Crypto materials containing TLS CA cert and metadata
      */
     private ManagedChannel getOrCreateChannel(String orgMspId,
-                                              FabricGatewayProperties.Organization orgConfig,
-                                              String tlsCaCert) throws IOException {
+                                              String peerEndpoint,
+                                              CryptoMaterials cryptoMaterials) {
         return channelCache.computeIfAbsent(orgMspId, key -> {
             try {
-                logger.info("Creating gRPC channel for org: {} to endpoint: {}", orgMspId, orgConfig.getPeerEndpoint());
+                logger.info("Creating gRPC channel for org: {} to endpoint: {}", orgMspId, peerEndpoint);
 
                 // Create TLS credentials
                 TlsChannelCredentials.Builder credentialsBuilder = TlsChannelCredentials.newBuilder();
 
                 // Add TLS CA certificate if provided
+                String tlsCaCert = cryptoMaterials.tlsCaCert();
                 if (tlsCaCert != null && !tlsCaCert.trim().isEmpty()) {
                     credentialsBuilder.trustManager(new ByteArrayInputStream(tlsCaCert.getBytes()));
                 } else {
                     logger.warn("No TLS CA certificate provided for org: {}, using system trust store", orgMspId);
                 }
 
+                // Build TLS override authority from metadata (e.g., "peer0.org1.example.com")
+                String tlsOverrideAuthority = buildTlsOverrideAuthority(cryptoMaterials);
+
                 // Create gRPC channel
-                ManagedChannel channel = Grpc.newChannelBuilder(orgConfig.getPeerEndpoint(), credentialsBuilder.build())
-                        .overrideAuthority(orgConfig.getPeerName())
+                ManagedChannel channel = Grpc.newChannelBuilder(peerEndpoint, credentialsBuilder.build())
+                        .overrideAuthority(tlsOverrideAuthority)
                         .build();
 
-                logger.info("Successfully created gRPC channel for org: {}", orgMspId);
+                logger.info("Successfully created gRPC channel for org: {} with authority: {}", orgMspId, tlsOverrideAuthority);
                 return channel;
             } catch (Exception e) {
                 logger.error("Failed to create gRPC channel for org: {}", orgMspId, e);
                 throw new RuntimeException("Failed to create gRPC channel for " + orgMspId, e);
             }
         });
+    }
+
+    /**
+     * Build TLS override authority from crypto materials metadata.
+     * Format: peerName.orgName (e.g., "peer0.org1.example.com")
+     */
+    private String buildTlsOverrideAuthority(CryptoMaterials cryptoMaterials) {
+        if (cryptoMaterials.metadata() != null) {
+            String peerName = cryptoMaterials.metadata().peerName();
+            String orgName = cryptoMaterials.metadata().orgName();
+            if (peerName != null && orgName != null) {
+                return peerName + "." + orgName;
+            }
+        }
+        // Fallback: extract from peerEndpoint (remove port)
+        String endpoint = cryptoMaterials.peerEndpoint();
+        if (endpoint != null && endpoint.contains(":")) {
+            return endpoint.substring(0, endpoint.lastIndexOf(':'));
+        }
+        return endpoint;
     }
 
     /**

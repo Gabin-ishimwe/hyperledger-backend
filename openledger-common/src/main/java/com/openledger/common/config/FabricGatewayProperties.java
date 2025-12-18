@@ -54,8 +54,12 @@ public class FabricGatewayProperties {
     }
 
     public static class Organization {
-        private String peerEndpoint;
-        private String peerName;
+        private String orgName;        // e.g., "org1.example.com" - used for crypto API
+        private String peerEndpoint;   // e.g., "localhost:7051" - fallback if not from crypto API
+        private String peerName;       // e.g., "peer0" - used for crypto API and TLS override
+
+        public String getOrgName() { return orgName; }
+        public void setOrgName(String orgName) { this.orgName = orgName; }
 
         public String getPeerEndpoint() { return peerEndpoint; }
         public void setPeerEndpoint(String peerEndpoint) { this.peerEndpoint = peerEndpoint; }
