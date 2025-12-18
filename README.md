@@ -1,221 +1,261 @@
-# OpenLedger Java
+# OpenLedger Backend
 
-A production-grade **Spring Boot 3.4+** backend for **OpenLedger** - a blockchain-based fintech platform for Rwanda's banking sector.
+A blockchain-based financial platform for Rwanda's banking sector, built with Spring Boot and Hyperledger Fabric.
 
-## 🎯 Core Objective
+## Overview
 
-Build a production-grade backend that connects multiple financial institutions including Bank of Kigali, MTN MOMO, and Equity Bank through Hyperledger Fabric technology.
+OpenLedger is a unified backend service that connects multiple financial institutions (banks, mobile money providers) through a shared Hyperledger Fabric blockchain network. It provides:
 
-- **Philosophy:** "Pure Blockchain" – business data lives on Hyperledger Fabric
-- **Dynamic Identity:** Identities (Certs/Keys) are fetched from an external API on-demand to connect to institution-specific peers
-- **Mapping:** Programmatic transformation using `jsonata4java`
+- **Blockchain Integration**: Hyperledger Fabric Gateway SDK for ledger operations
+- **Multi-Institution Support**: Modular architecture for Bank of Kigali, MTN, Equity Bank, and more
+- **Data Transformation**: JSONata-based mapping between institution formats and ledger schema
+- **REST API**: OpenAPI-documented endpoints for querying and submitting transactions
+- **Scheduled Sync**: Automated data synchronization from institution APIs to blockchain
 
-## 📂 Project Structure
+## Technology Stack
 
-This is a multi-module Maven project with the following structure:
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Java | 20 | Programming Language |
+| Spring Boot | 3.4.0 | Application Framework |
+| Hyperledger Fabric Gateway | 1.10.0 | Blockchain Integration |
+| gRPC | 1.76.0 | Communication Protocol |
+| JSONata4Java | 2.6.1 | Data Transformation |
+| Springdoc OpenAPI | 2.3.0 | API Documentation |
+| Maven | 3.8+ | Build Tool |
+
+## Project Structure
 
 ```
 openledger-java/
-├── openledger-common/           # Shared blockchain & crypto utilities
-├── openledger-integration/      # Data pull & transformation services
-├── openledger-api/             # REST API for queries & transactions
-└── pom.xml                     # Parent POM
+├── pom.xml                                 # Maven configuration
+├── src/
+│   ├── main/
+│   │   ├── java/com/openledger/
+│   │   │   ├── OpenLedgerApplication.java  # Main entry point
+│   │   │   │
+│   │   │   ├── api/                        # API Layer
+│   │   │   │   ├── controller/             # REST controllers
+│   │   │   │   ├── exception/              # Global exception handling
+│   │   │   │   └── security/               # JWT & API Key auth (TODO)
+│   │   │   │
+│   │   │   ├── institutions/               # Institution Modules
+│   │   │   │   ├── common/                 # Base interfaces
+│   │   │   │   ├── bk/                     # Bank of Kigali
+│   │   │   │   │   ├── service/            # Business logic
+│   │   │   │   │   ├── connector/          # External API client
+│   │   │   │   │   └── mapper/             # Data transformation
+│   │   │   │   ├── mtn/                    # MTN Mobile Money (TODO)
+│   │   │   │   └── equity/                 # Equity Bank (TODO)
+│   │   │   │
+│   │   │   ├── blockchain/                 # Blockchain Layer
+│   │   │   │   ├── client/                 # Fabric Gateway management
+│   │   │   │   ├── service/                # Ledger operations
+│   │   │   │   └── dto/                    # Blockchain data models
+│   │   │   │
+│   │   │   └── core/                       # Core Utilities
+│   │   │       ├── config/                 # Spring configuration
+│   │   │       ├── util/                   # Helper classes
+│   │   │       └── factory/                # Institution routing
+│   │   │
+│   │   └── resources/
+│   │       ├── application.yml             # Application configuration
+│   │       └── fabric/                     # Fabric connection profiles
+│   │
+│   └── test/                               # Test classes
+│       ├── java/com/openledger/
+│       │   ├── unit/                       # Unit tests
+│       │   └── integration/                # Integration tests
+│       └── resources/
+│           └── application-test.yml        # Test configuration
+│
+├── infra/                                  # Infrastructure
+│   ├── docker/
+│   │   ├── Dockerfile                      # Multi-stage build
+│   │   └── docker-compose.yml              # Local development
+│   └── caddy/
+│       └── Caddyfile                       # API Gateway config
+│
+└── scripts/                                # Deployment utilities
 ```
 
-### Module Descriptions
-
-#### `openledger-common`
-- **`CryptoClient`**: Fetches crypto materials from external API using Spring RestClient
-- **`GatewayRegistry`**: Manages Fabric Gateway instances with dynamic identity fetching
-- **`FabricIdentityHelper`**: Converts PEM strings to Fabric Identity/Signer objects
-- **`JsonataTransformer`**: Programmatic data transformation utility
-
-#### `openledger-integration`
-- **`BankConnector`**: Calls external Bank APIs using RestClient
-- **`BankMapper`**: Maps Bank JSON to Ledger POJOs using JSONata
-- **`SyncScheduler`**: Periodically triggers pull/map/ledger-write flow
-
-#### `openledger-api`
-- **`BankController`**: Exposes REST endpoints (e.g., `/api/v1/bk/transactions`)
-- **`BankService`**: Obtains specific Contract from GatewayRegistry to query ledger
-- **Global Exception Handling**: Comprehensive error handling for ledger and mapping errors
-
-## 🚀 Quick Start
+## Getting Started
 
 ### Prerequisites
 
-- Java 21+
+- Java 20 or higher
 - Maven 3.8+
-- Docker (for Hyperledger Fabric)
-- Access to crypto materials API
+- Docker & Docker Compose (for local development)
+- Access to a Hyperledger Fabric network
+- Crypto service for identity management
 
-### Environment Variables
+### Configuration
+
+Set the following environment variables or update `application.yml`:
 
 ```bash
 # Crypto Service
-CRYPTO_SERVICE_URL=http://localhost:8081
+export CRYPTO_SERVICE_URL=http://localhost:8080
 
-# Bank of Kigali Configuration
-BK_ORG_ID=BankOfKigaliMSP
-BK_USER_ID=admin
-BK_PEER_ID=peer0.bk.openledger.com
-BK_PEER_ENDPOINT=grpcs://peer0.bk.openledger.com:7051
-BK_CHANNEL=openledger-channel
-BK_CHAINCODE=openledger
-BK_API_URL=https://api.bk.rw
-BK_API_KEY=your-api-key
+# Fabric Network
+export FABRIC_DEFAULT_CHANNEL=openledger-channel
 
-# Application
-SERVER_PORT=8080
-SPRING_PROFILES_ACTIVE=local
+# Bank of Kigali
+export BK_ORG_ID=BankOfKigaliMSP
+export BK_PEER_ENDPOINT=grpcs://peer0.bk.openledger.com:7051
+export BK_API_URL=https://api.bk.rw
+export BK_API_KEY=your-api-key
 ```
 
-### Build & Run
+### Build
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd openledger-java
-
-# Build all modules
+# Compile the project
 mvn clean compile
 
-# Run the API
-cd openledger-api
-mvn spring-boot:run
+# Run tests
+mvn test
 
-# Or build and run with Docker
-mvn clean package
-java -jar openledger-api/target/openledger-api-1.0.0-SNAPSHOT.jar
+# Package as JAR
+mvn package -DskipTests
+
+# Run the application
+java -jar target/openledger-backend-1.0.0-SNAPSHOT.jar
 ```
 
-### API Documentation
+### Docker
+
+```bash
+# Build and run with Docker Compose
+cd infra/docker
+docker-compose up --build
+
+# Or build image directly
+docker build -t openledger-backend -f infra/docker/Dockerfile .
+```
+
+## API Endpoints
 
 Once running, access the API documentation at:
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- OpenAPI Docs: http://localhost:8080/api-docs
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **OpenAPI Spec**: http://localhost:8080/api-docs
 
-## 🏗 Architecture
+### Bank of Kigali Endpoints
 
-### Dynamic Identity Management
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/bk/transactions` | Get transactions |
+| GET | `/api/v1/bk/transactions/{id}` | Get transaction by ID |
+| POST | `/api/v1/bk/transactions` | Create transaction |
+| GET | `/api/v1/bk/balances` | Get account balances |
+| GET | `/api/v1/bk/customers/{id}` | Get customer info |
+| GET | `/api/v1/bk/status` | Get network status |
 
-```java
-// Crypto materials are fetched dynamically
-CryptoMaterials materials = cryptoClient.fetchCrypto(org, user, peer);
+### Health & Metrics
 
-// Gateway is created with fetched identity
-Gateway gateway = Gateway.newInstance()
-    .identity(identityHelper.createIdentity(materials.certificate(), materials.mspId()))
-    .signer(identityHelper.createSigner(materials.privateKey()))
-    .connection(peerEndpoint)
-    .connect();
+| Endpoint | Description |
+|----------|-------------|
+| `/actuator/health` | Health check |
+| `/actuator/info` | Application info |
+| `/actuator/metrics` | Metrics |
+| `/actuator/prometheus` | Prometheus metrics |
+
+## Architecture
+
+### Blockchain Integration
+
+The application uses the Hyperledger Fabric Gateway SDK to interact with the blockchain:
+
+1. **CryptoClient**: Fetches identity materials from external crypto service
+2. **FabricIdentityHelper**: Converts PEM certificates to Fabric Identity objects
+3. **FabricGatewayService**: Manages Gateway connections with caching and timeouts
+
+### Data Flow
+
+```
+Institution API → Connector → Mapper → Ledger Service → Blockchain
+                     ↓
+              JSONata Transform
+                     ↓
+              Standard Schema
 ```
 
-### Data Transformation
+### Institution Modules
 
-```java
-// JSONata transformations are applied programmatically
-String bankJson = bankConnector.fetchTransactions(fromDate, toDate, limit);
-String ledgerJson = bankMapper.mapTransactions(bankJson);
+Each institution follows the same pattern:
+- `connector/`: External API client
+- `mapper/`: JSONata-based data transformation
+- `service/`: Business logic and ledger operations
+- `dto/`: Request/response objects
+- `entity/`: Operational entities (sync jobs, etc.)
 
-// Write to blockchain
-contract.submitTransaction("writeData", org, "transactions", ledgerJson, timestamp);
+## Configuration Profiles
+
+| Profile | Description |
+|---------|-------------|
+| `local` | Local development with debug logging |
+| `docker` | Docker environment |
+| `production` | Production with minimal logging |
+| `test` | Test configuration with disabled schedulers |
+
+## Adding a New Institution
+
+1. Create package under `institutions/{institution-id}/`
+2. Implement `InstitutionService` interface
+3. Create connector, mapper, and service classes
+4. Add configuration to `application.yml`
+5. Register controller endpoints
+
+Example structure:
+```
+institutions/mtn/
+├── connector/MtnConnector.java
+├── mapper/MtnMapper.java
+├── service/MtnService.java
+├── dto/
+└── entity/
 ```
 
-## 📋 API Endpoints
-
-### Bank of Kigali (`/api/v1/bk`)
-
-- `GET /transactions` - Get transactions with date filtering
-- `GET /transactions/{id}` - Get specific transaction
-- `GET /balances` - Get account balances
-- `GET /customers/{id}` - Get customer information
-- `POST /transactions` - Create new transaction
-- `GET /accounts/{id}/transactions` - Get account transaction history
-- `GET /status` - Check network status
-
-## 🔧 Configuration
-
-### Institution Mapping
-
-Configure institution-to-peer mappings in `application.yml`:
-
-```yaml
-institutions:
-  bk:
-    org: BankOfKigaliMSP
-    peer:
-      endpoint: grpcs://peer0.bk.openledger.com:7051
-    channel: openledger-channel
-    chaincode: openledger
-```
-
-### Synchronization Schedule
-
-```yaml
-sync:
-  bk:
-    transactions:
-      interval: 300000  # 5 minutes
-    balances:
-      interval: 900000  # 15 minutes
-```
-
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run all tests
 mvn test
 
-# Run specific module tests
-cd openledger-common && mvn test
-cd openledger-integration && mvn test
-cd openledger-api && mvn test
+# Run specific test class
+mvn test -Dtest=FabricGatewayServiceIntegrationTest
+
+# Run with specific profile
+mvn test -Dspring.profiles.active=test
 ```
 
-## 📊 Monitoring
+**Note**: Integration tests require a running Fabric network and crypto service.
 
-The application includes Spring Boot Actuator endpoints:
+## Environment Variables
 
-- Health: `/actuator/health`
-- Metrics: `/actuator/metrics`
-- Info: `/actuator/info`
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_PORT` | 8080 | Server port |
+| `SPRING_PROFILES_ACTIVE` | local | Active profile |
+| `CRYPTO_SERVICE_URL` | http://localhost:8080 | Crypto service URL |
+| `FABRIC_DEFAULT_CHANNEL` | openledger-channel | Default channel |
+| `BK_ORG_ID` | BankOfKigaliMSP | BK organization MSP ID |
+| `BK_API_URL` | https://api.bk.rw | BK API endpoint |
+| `BK_API_KEY` | - | BK API key |
+| `SYNC_ENABLED` | true | Enable/disable sync scheduler |
 
-## 🚀 Deployment
-
-### Docker
-
-```bash
-# Build Docker image
-mvn clean package
-docker build -t openledger-api:latest openledger-api/
-
-# Run with environment variables
-docker run -p 8080:8080 \
-  -e CRYPTO_SERVICE_URL=http://crypto-service:8081 \
-  -e BK_PEER_ENDPOINT=grpcs://peer0.bk.openledger.com:7051 \
-  openledger-api:latest
-```
-
-### Kubernetes
-
-Deploy to Kubernetes using the provided manifests (coming soon).
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/new-institution`)
+3. Commit changes (`git commit -m 'Add new institution support'`)
+4. Push to branch (`git push origin feature/new-institution`)
+5. Open a Pull Request
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
-## 🆘 Support
+## Support
 
-For support and questions:
-- Create an issue in the GitHub repository
-- Contact the development team
-- Check the documentation at `/swagger-ui.html`
+For issues and feature requests, please open an issue on GitHub.

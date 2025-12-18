@@ -1,0 +1,35 @@
+# Caddy configuration for OpenLedger Backend
+# This is a placeholder configuration for production deployment
+
+# API Gateway Configuration
+:80 {
+    # Redirect HTTP to HTTPS in production
+    # redir https://{host}{uri} permanent
+
+    # Reverse proxy to OpenLedger Backend
+    reverse_proxy openledger-backend:8080 {
+        # Health checks
+        health_uri /actuator/health
+        health_interval 30s
+
+        # Headers
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+# HTTPS Configuration (uncomment for production)
+# :443 {
+#     tls {
+#         # Use Let's Encrypt or custom certificates
+#     }
+#
+#     reverse_proxy openledger-backend:8080
+# }

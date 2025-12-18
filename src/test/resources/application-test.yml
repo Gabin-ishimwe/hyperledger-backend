@@ -1,0 +1,54 @@
+# Test Configuration for OpenLedger Backend
+spring:
+  application:
+    name: openledger-backend-test
+
+# Disable sync scheduler for tests
+sync:
+  enabled: false
+
+# Test Crypto Service Configuration
+crypto:
+  service:
+    url: ${CRYPTO_SERVICE_URL:http://localhost:8080}
+
+# Test Fabric Configuration
+fabric:
+  default:
+    channel: ${FABRIC_CHANNEL:test-channel}
+  gateway:
+    evaluate-timeout: 5
+    endorse-timeout: 15
+    submit-timeout: 5
+    commit-timeout: 60
+  organizations:
+    Org1MSP:
+      org-name: ${ORG1_NAME:org1.example.com}
+      peer-name: ${ORG1_PEER_NAME:peer0}
+      peer-endpoint: ${ORG1_PEER_ENDPOINT:localhost:7051}
+    TestBankMSP:
+      org-name: testbank.openledger.com
+      peer-name: peer0
+      peer-endpoint: localhost:9051
+
+# Test Institution Configuration
+institutions:
+  bk:
+    org: TestBankMSP
+    user: testuser
+    peer: test-peer
+    peer-endpoint: grpc://localhost:7051
+    channel: test-channel
+    chaincode: test-chaincode
+    api:
+      url: http://localhost:8082
+      key: test-api-key
+
+# Sync scheduler is disabled via sync.enabled=false above
+
+# Test Logging
+logging:
+  level:
+    com.openledger: DEBUG
+    org.hyperledger.fabric: INFO
+    io.grpc: INFO
