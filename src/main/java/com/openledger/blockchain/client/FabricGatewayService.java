@@ -82,19 +82,40 @@ public class FabricGatewayService implements DisposableBean {
     }
 
     /**
-     * Get a Contract from the Network for the specified chaincode.
+     * Get the default Contract from the Network for the specified chaincode.
      *
      * @param orgMspId Organization MSP ID
      * @param userId User identifier
      * @param peerId Peer identifier (optional)
      * @param channelName Channel name (optional)
-     * @param contractName Chaincode/contract name
+     * @param chaincodeId Chaincode ID (e.g., "chaincode-java")
      * @return Contract instance
      */
     public Contract getContract(String orgMspId, String userId, String peerId,
-                                String channelName, String contractName) {
+                                String channelName, String chaincodeId) {
         Network network = getNetwork(orgMspId, userId, peerId, channelName);
-        return network.getContract(contractName);
+        return network.getContract(chaincodeId);
+    }
+
+    /**
+     * Get a named Contract from the Network for the specified chaincode.
+     * Use this when the chaincode contains multiple contracts with @Contract(name = "...").
+     *
+     * @param orgMspId Organization MSP ID
+     * @param userId User identifier
+     * @param peerId Peer identifier (optional)
+     * @param channelName Channel name (optional)
+     * @param chaincodeId Chaincode ID (e.g., "chaincode-java")
+     * @param contractName Named contract within the chaincode (e.g., "kyc")
+     * @return Contract instance
+     */
+    public Contract getContract(String orgMspId, String userId, String peerId,
+                                String channelName, String chaincodeId, String contractName) {
+        Network network = getNetwork(orgMspId, userId, peerId, channelName);
+        if (contractName != null && !contractName.isBlank()) {
+            return network.getContract(chaincodeId, contractName);
+        }
+        return network.getContract(chaincodeId);
     }
 
     /**

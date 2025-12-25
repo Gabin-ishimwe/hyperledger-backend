@@ -43,7 +43,7 @@ class FabricGatewayServiceIntegrationTest {
     private static final String TEST_ORG_MSP_ID = "Org1MSP";
     private static final String TEST_USER_ID = "User1";
     private static final String TEST_PEER_ID = "peer0";
-    private static final String TEST_CHAINCODE = "basic";
+    private static final String TEST_CHAINCODE = "chaincode-typescript";
 
     @BeforeEach
     void setUp() {

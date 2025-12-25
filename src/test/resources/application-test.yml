@@ -15,7 +15,7 @@ crypto:
 # Test Fabric Configuration
 fabric:
   default:
-    channel: ${FABRIC_CHANNEL:test-channel}
+    channel: ${FABRIC_CHANNEL:mychannel}
   gateway:
     evaluate-timeout: 5
     endorse-timeout: 15
